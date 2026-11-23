@@ -1,0 +1,556 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance Tracker</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #f1f5f9;
+    padding: 25px;
+    color: #1e293b;
+}
+
+.container {
+    max-width: 1100px;
+    margin: auto;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    gap: 15px;
+}
+
+header h1 {
+    color: #2563eb;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.card {
+    background: white;
+    padding: 22px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px #0000000a;
+}
+
+.card h3 {
+    color: #64748b;
+    font-size: 14px;
+}
+
+.card h2 {
+    margin-top: 12px;
+    font-size: 28px;
+}
+
+.panel {
+    background: white;
+    padding: 22px;
+    border-radius: 12px;
+    margin-bottom: 22px;
+}
+
+input, button {
+    padding: 11px 14px;
+    border-radius: 7px;
+    border: 1px solid #cbd5e1;
+    font-size: 14px;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    color: white;
+    background: #2563eb;
+}
+
+button:hover {
+    opacity: .85;
+}
+
+.add-form {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.add-form input {
+    flex: 1;
+    min-width: 150px;
+}
+
+.controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 650px;
+}
+
+th, td {
+    padding: 14px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+th {
+    background: #f8fafc;
+}
+
+.present {
+    background: #16a34a;
+}
+
+.absent {
+    background: #dc2626;
+}
+
+.delete {
+    background: #64748b;
+}
+
+.status {
+    padding: 6px 10px;
+    border-radius: 5px;
+    color: white;
+    font-size: 12px;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+#date {
+    background: white;
+}
+
+@media(max-width: 750px) {
+    .cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+@media(max-width: 400px) {
+    body {
+        padding: 12px;
+    }
+
+    .cards {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+    <div>
+        <h1>Attendance Tracker</h1>
+        <p>Student Attendance Management System</p>
+    </div>
+
+    <input type="date" id="date">
+</header>
+
+<!-- Dashboard -->
+
+<div class="cards">
+
+    <div class="card">
+        <h3>Total Students</h3>
+        <h2 id="total">0</h2>
+    </div>
+
+    <div class="card">
+        <h3>Present</h3>
+        <h2 id="presentCount">0</h2>
+    </div>
+
+    <div class="card">
+        <h3>Absent</h3>
+        <h2 id="absentCount">0</h2>
+    </div>
+
+    <div class="card">
+        <h3>Attendance %</h3>
+        <h2 id="percentage">0%</h2>
+    </div>
+
+</div>
+
+<!-- Add Student -->
+
+<div class="panel">
+
+    <h2>Add New Student</h2>
+
+    <div class="add-form">
+
+        <input type="text"
+        id="studentName"
+        placeholder="Enter Student Name">
+
+        <input type="text"
+        id="rollNumber"
+        placeholder="Enter Roll Number">
+
+        <button onclick="addStudent()">
+            Add Student
+        </button>
+
+    </div>
+
+</div>
+
+<!-- Attendance Table -->
+
+<div class="panel">
+
+    <div class="controls">
+
+        <h2>Student Attendance</h2>
+
+        <input type="text"
+        id="search"
+        placeholder="Search Student..."
+        oninput="renderStudents()">
+
+        <button onclick="exportCSV()">
+            Export CSV
+        </button>
+
+    </div>
+
+    <div class="table-wrapper">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Roll No.</th>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Mark Attendance</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+
+            <tbody id="studentTable"></tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+</div>
+
+<script>
+
+// Get saved students
+
+let students = JSON.parse(
+    localStorage.getItem("students")
+) || [];
+
+let attendance = JSON.parse(
+    localStorage.getItem("attendance")
+) || {};
+
+// Today's date
+
+const dateInput = document.getElementById("date");
+
+function today() {
+    const d = new Date();
+    return [
+        d.getFullYear(),
+        String(d.getMonth() + 1).padStart(2, "0"),
+        String(d.getDate()).padStart(2, "0")
+    ].join("-");
+}
+
+dateInput.value = today();
+
+// Save data
+
+function saveData() {
+    localStorage.setItem(
+        "students",
+        JSON.stringify(students)
+    );
+
+    localStorage.setItem(
+        "attendance",
+        JSON.stringify(attendance)
+    );
+}
+
+// Add Student
+
+function addStudent() {
+
+    const name = document.getElementById(
+        "studentName"
+    ).value.trim();
+
+    const roll = document.getElementById(
+        "rollNumber"
+    ).value.trim();
+
+    if (!name || !roll) {
+        alert("Please enter name and roll number!");
+        return;
+    }
+
+    if (students.some(s => s.roll === roll)) {
+        alert("Roll number already exists!");
+        return;
+    }
+
+    students.push({
+        id: Date.now(),
+        name: name,
+        roll: roll
+    });
+
+    saveData();
+
+    document.getElementById("studentName").value = "";
+    document.getElementById("rollNumber").value = "";
+
+    renderStudents();
+}
+
+// Get current attendance
+
+function getStatus(id) {
+
+    const selectedDate = dateInput.value;
+
+    return attendance[selectedDate]?.[id] || "Not Marked";
+}
+
+// Mark Attendance
+
+function markAttendance(id, status) {
+
+    const selectedDate = dateInput.value;
+
+    if (!attendance[selectedDate]) {
+        attendance[selectedDate] = {};
+    }
+
+    attendance[selectedDate][id] = status;
+
+    saveData();
+    renderStudents();
+}
+
+// Delete Student
+
+function deleteStudent(id) {
+
+    if (!confirm("Delete this student?")) return;
+
+    students = students.filter(s => s.id !== id);
+
+    Object.values(attendance).forEach(day => {
+        delete day[id];
+    });
+
+    saveData();
+    renderStudents();
+}
+
+// Display Students
+
+function renderStudents() {
+
+    const table = document.getElementById("studentTable");
+
+    const search = document.getElementById(
+        "search"
+    ).value.toLowerCase();
+
+    table.innerHTML = "";
+
+    const filtered = students.filter(s =>
+        s.name.toLowerCase().includes(search) ||
+        s.roll.toLowerCase().includes(search)
+    );
+
+    filtered.forEach(student => {
+
+        const status = getStatus(student.id);
+
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            <td>${escapeHTML(student.roll)}</td>
+            <td>${escapeHTML(student.name)}</td>
+
+            <td>
+                <span class="status ${
+                    status === "Present" ? "present" :
+                    status === "Absent" ? "absent" : ""
+                }">
+                    ${status}
+                </span>
+            </td>
+
+            <td>
+                <button class="present"
+                onclick="markAttendance(${student.id}, 'Present')">
+                    Present
+                </button>
+
+                <button class="absent"
+                onclick="markAttendance(${student.id}, 'Absent')">
+                    Absent
+                </button>
+            </td>
+
+            <td>
+                <button class="delete"
+                onclick="deleteStudent(${student.id})">
+                    Delete
+                </button>
+            </td>
+        `;
+
+        table.appendChild(row);
+    });
+
+    updateDashboard();
+}
+
+// Prevent HTML injection in student details
+
+function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[char]);
+}
+
+// Dashboard Calculation
+
+function updateDashboard() {
+
+    let total = students.length;
+    let present = 0;
+    let absent = 0;
+
+    students.forEach(student => {
+
+        const status = getStatus(student.id);
+
+        if (status === "Present") present++;
+        if (status === "Absent") absent++;
+
+    });
+
+    document.getElementById("total").innerText = total;
+
+    document.getElementById(
+        "presentCount"
+    ).innerText = present;
+
+    document.getElementById(
+        "absentCount"
+    ).innerText = absent;
+
+    let percentage = total ?
+        ((present / total) * 100).toFixed(1) : 0;
+
+    document.getElementById(
+        "percentage"
+    ).innerText = percentage + "%";
+}
+
+// Export CSV
+
+function exportCSV() {
+
+    const selectedDate = dateInput.value;
+
+    let csv = "Roll Number,Name,Date,Status\n";
+
+    students.forEach(student => {
+
+        const status = getStatus(student.id);
+
+        csv += [
+            `"${student.roll}"`,
+            `"${student.name}"`,
+            selectedDate,
+            status
+        ].join(",") + "\n";
+
+    });
+
+    const blob = new Blob([csv], {
+        type: "text/csv;charset=utf-8;"
+    });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "Attendance-" + selectedDate + ".csv";
+
+    link.click();
+
+    URL.revokeObjectURL(url);
+}
+
+// Change Date
+
+dateInput.addEventListener("change", renderStudents);
+
+// Initial Display
+
+renderStudents();
+
+</script>
+
+</body>
+</html>
